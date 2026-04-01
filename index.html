@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FEARLESS HUD PROTOCOL v7.0</title>
+    <title>FEARLESS HUD v7.1</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+KR:wght@300;700&display=swap');
 
         :root {
             --neon-blue: #00f2ff;
             --dark-blue: #004455;
-            --hud-bg: rgba(0, 0, 0, 0.9);
-            --glow: 0 0 15px rgba(0, 242, 255, 0.6);
+            --arch-gold: #d4af37;
             --font-main: 'Orbitron', 'Noto Sans KR', sans-serif;
         }
 
         body {
-            margin: 0; background: #000; color: var(--neon-blue);
+            margin: 0; background: #050505; color: var(--neon-blue);
             font-family: var(--font-main);
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
             padding: 20px; overflow-x: hidden; cursor: crosshair;
@@ -26,229 +25,220 @@
         #top-controls { margin-bottom: 20px; display: flex; gap: 15px; z-index: 5000; }
         button.hud-btn {
             background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 10px 30px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold;
-            transition: 0.3s; text-transform: uppercase; letter-spacing: 2px;
-            box-shadow: inset 0 0 5px rgba(0, 242, 255, 0.3);
+            padding: 10px 25px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold;
+            transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
         }
-        button.hud-btn:hover { background: var(--neon-blue); color: #000; box-shadow: var(--glow); }
+        button.hud-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
 
         /* 🚨 메인 HUD 캡처 영역 (1200x800 고정) 🚨 */
         #capture {
             width: 1200px; height: 800px; background: #000;
-            position: relative; box-sizing: border-box;
-            border: 2px solid var(--dark-blue);
-            /* 그리드 및 라디얼 배경 */
+            position: relative; padding: 40px; box-sizing: border-box;
+            border: 2px solid #333; display: flex; flex-direction: column;
             background-image: 
                 linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px),
                 radial-gradient(circle at center, #001115 0%, #000 100%);
             background-size: 30px 30px, 30px 30px, 100% 100%;
             overflow: hidden;
-            box-shadow: inset 0 0 100px rgba(0,0,0,1);
         }
 
-        /* 스캔라인 연출 */
         .scanline {
             position: absolute; width: 100%; height: 2px;
-            background: rgba(255,255,255,0.1); box-shadow: 0 0 20px rgba(255,255,255,0.2);
-            top: 0; animation: scan 4s linear infinite; pointer-events: none; z-index: 100;
+            background: rgba(255,255,255,0.05); top: 0; animation: scan 4s linear infinite; pointer-events: none; z-index: 100;
         }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        @keyframes scan { from { top: 0; } to { top: 100%; } }
 
-        /* 좌우 비대칭 홀로그램 패널 (image_1.png 컨셉) */
+        /* 비대칭 홀로그램 패널 */
         .hologram-panel {
-            position: absolute; background: rgba(0, 242, 255, 0.03);
-            border: 1px solid rgba(0, 242, 255, 0.2);
-            box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.1);
+            position: absolute; background: rgba(0, 242, 255, 0.02);
+            border: 1px solid rgba(0, 242, 255, 0.2); padding: 20px;
         }
         
-        /* 왼쪽 패널: 상단 배치 */
         #panel-left {
-            top: 40px; left: 40px; width: 300px; height: 400px;
-            clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%); /* 하단 모서리 컷 */
-            display: flex; flex-direction: column; align-items: center; padding: 20px;
+            top: 40px; left: 40px; width: 320px; height: 420px;
+            clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%);
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* 오른쪽 패널: 하단 배치 */
         #panel-right {
-            bottom: 40px; right: 40px; width: 300px; height: 400px;
-            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 10%); /* 상단 모서리 컷 */
-            display: flex; flex-direction: column; align-items: center; padding: 20px;
+            bottom: 40px; right: 40px; width: 320px; height: 420px;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 10%);
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* 캐릭터 사진 프레임 */
+        /* 🚨 엑박 현상 해결: Placeholder 배경 지정 🚨 */
         .photo-frame {
-            width: 220px; height: 220px; border: 1px solid var(--neon-blue);
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-            box-shadow: var(--glow); margin-bottom: 15px;
-            /* 기본 로고 placeholder */
-            background-image: url('「ARCH」 Symbol Logo White Ver.png');
-            background-color: rgba(0,0,0,0.5); background-size: 50%;
+            width: 240px; height: 240px; border: 1px solid var(--neon-blue);
+            /* 로고 배경 Placeholder */
+            background: url('「Fearless」 Symbol Logo White Ver.png') no-repeat center center / 40% #0a0a0a;
+            background-size: cover; margin-bottom: 15px; box-shadow: 0 0 15px rgba(0,242,255,0.2);
         }
 
-        .data-label { font-size: 12px; color: var(--arch-gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
-        .data-value { font-size: 20px; font-weight: 900; color: #fff; text-shadow: var(--glow); border-bottom: 1px solid var(--neon-blue); padding-bottom: 3px; margin-bottom: 10px; width: 100%; text-align: center;}
+        .data-label { font-size: 10px; color: var(--arch-gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 3px; }
+        .name-display { font-size: 24px; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--neon-blue); border-bottom: 1px solid var(--neon-blue); width: 100%; text-align: center; padding-bottom: 5px; margin-bottom: 10px; }
 
-        /* 중앙 코어 영역 (서큘러 게이지 & 로고) */
+        /* 중앙 코어 영역 */
         #center-core {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 500px; height: 500px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 500px; display: flex; flex-direction: column; align-items: center; text-align: center;
         }
-        
-        /* image_1.png의 원형 UI 레이어 구현 */
         .circular-ui {
-            position: absolute; border-radius: 50%; border: 1px solid rgba(0, 242, 255, 0.1);
-            pointer-events: none;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border-radius: 50%; border: 1px solid rgba(0, 242, 255, 0.1); pointer-events: none;
         }
-        .ui-1 { width: 100%; height: 100%; animation: rotate 20s linear infinite; border-dasharray: 5, 5; }
-        .ui-2 { width: 85%; height: 85%; animation: rotate-rev 15s linear infinite; border-width: 2px; border-style: dashed; }
-        .ui-3 { width: 70%; height: 70%; border-color: rgba(0, 242, 255, 0.3); box-shadow: 0 0 30px rgba(0, 242, 255, 0.1); }
-        
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes rotate-rev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        .ui-1 { width: 480px; height: 480px; animation: rotate 30s linear infinite; border-style: dashed; }
+        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
 
-        /* 중앙 로고 */
-        .center-logo { width: 180px; opacity: 0.8; filter: drop-shadow(var(--glow)); z-index: 10; margin-bottom: 20px;}
-
-        /* 타이핑 화면 */
+        /* 중앙 타이핑 화면 */
         #screen {
-            width: 400px; max-height: 200px; text-align: left; z-index: 10;
-            font-family: monospace; font-size: 14px; overflow: hidden;
-            border-left: 2px solid var(--neon-blue); padding-left: 15px;
+            width: 440px; height: 220px; margin: 0 auto; text-align: left;
+            font-family: monospace; font-size: 13px; color: #eee;
+            border-left: 3px solid var(--neon-blue); padding: 10px 20px;
+            background: rgba(0,0,0,0.4); overflow: hidden; position: relative; z-index: 10;
         }
-        .line { margin: 3px 0; color: #fff; text-shadow: 0 0 5px #fff; }
+        .line { margin-bottom: 4px; line-height: 1.4; }
+        .warning { color: #ff3e3e; font-weight: bold; text-shadow: 0 0 8px #ff0000; }
 
-        /* 하단 로고 영역 (image_1.png 컨셉) */
+        /* 하단 브레이커 */
         #bottom-breaker {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 80px;
+            position: absolute; bottom: 0; width: 100%; height: 60px;
             background: linear-gradient(to top, rgba(0, 242, 255, 0.1), transparent);
             border-top: 1px solid rgba(0, 242, 255, 0.3);
             display: flex; align-items: center; justify-content: center;
-            z-index: 50;
-        }
-        .bottom-logo-text {
-            font-size: 28px; font-weight: 900; color: #fff; letter-spacing: 15px;
-            text-shadow: 0 0 20px #fff, var(--glow);
-            text-transform: uppercase;
         }
 
-        /* 경고 및 특수 효과 */
-        .warning { color: #ff3333; text-shadow: 0 0 10px #ff0000; font-weight: bold;}
-        .glitch { animation: glitch 0.2s infinite; }
-        @keyframes glitch { 0% { transform: translate(0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+        /* 글리치 */
+        .glitch { animation: glitch 0.2s infinite; color: #ff0044 !important; text-shadow: 2px 2px #00f2ff !important; }
+        @keyframes glitch { 0% { transform: translate(0); } 25% { transform: translate(-3px,2px); } 50% { transform: translate(3px,-2px); } 100% { transform: translate(0); } }
 
-        /* 하단 업로드/OOC UI */
-        #lower-ui { width: 1200px; margin-top: 20px; display: flex; flex-direction: column; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border: 1px solid #333; }
-        .file-group, .ooc-group { display: flex; gap: 10px; justify-content: center; align-items: center; }
+        /* 🚨 하단 입력 UI 영역 추가 🚨 */
+        #lower-ui {
+            width: 1200px; margin-top: 20px;
+            background: rgba(255,255,255,0.03); padding: 25px; border: 1px solid #333;
+            box-sizing: border-box; display: flex; flex-direction: column; gap: 15px;
+        }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .input-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 12px; color: var(--arch-gold); font-weight: bold; text-transform: uppercase;}
+        input[type=text] { 
+            background: #111; border: 1px solid #444; color: #fff; padding: 10px; 
+            font-family: var(--font-main); outline: none; transition: 0.3s;
+        }
+        input[type=text]:focus { border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(0,242,255,0.3); }
         input[type=file] { color: #ccc; font-size: 12px; }
-        textarea { width: 100%; height: 150px; background: #000; color: #00f2ff; border: 1px solid #00f2ff; font-family: monospace; padding: 10px; box-sizing: border-box; margin-top: 10px;}
 
+        textarea { 
+            width: 100%; height: 180px; background: #000; color: #00f2ff; border: 1px solid #00f2ff; 
+            font-family: monospace; padding: 10px; box-sizing: border-box; margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
+<div class="cursor-light" id="cursor"></div>
+
 <div id="top-controls">
-    <button class="hud-btn" onclick="startMission()">INITIALIZE MISSION</button>
-    <button class="hud-btn" onclick="saveImage()">📸 PROTOCOL SAVE</button>
-    <button class="hud-btn" onclick="clearErrors()" style="border-color: #f33; color: #f33;">CLEAR ALERTS</button>
+    <button class="hud-btn" onclick="startMission()">INITIALIZE PROTOCOL</button>
+    <button class="hud-btn" onclick="saveImage()">📸 CAPTURE DATA</button>
 </div>
 
 <div id="capture">
     <div class="scanline"></div>
-    <div id="error-container"></div> <div id="panel-left" class="hologram-panel">
+    <div id="error-container"></div>
+
+    <div id="panel-left" class="hologram-panel">
         <div class="photo-frame" id="char1"></div>
-        <div class="data-label">SUBJECT_A // CODENAME</div>
-        <div class="data-value" id="outName1">FEARLESS_01</div>
-        <div style="font-size:10px; color:rgba(0,242,255,0.5);">STATUS: ACTIVE</div>
+        <div class="data-label">DESIGNATION: SUBJECT_A</div>
+        <div class="name-display" id="outName1">FEARLESS_01</div>
+        <div style="font-size:10px; opacity:0.6;">STATUS: ACTIVE</div>
     </div>
 
     <div id="center-core">
         <div class="circular-ui ui-1"></div>
-        <div class="circular-ui ui-2"></div>
-        <div class="circular-ui ui-3"></div>
-        
-        <img src="「ARCH」 Symbol Logo White Ver.png" class="center-logo">
-        
+        <div style="font-size:10px; letter-spacing:5px; margin-bottom:15px; opacity:0.7;">TACTICAL ANALYSIS SYSTEM</div>
         <div id="screen"></div>
     </div>
 
     <div id="panel-right" class="hologram-panel">
         <div class="photo-frame" id="char2"></div>
-        <div class="data-label">SUBJECT_B // CODENAME</div>
-        <div class="data-value" id="outName2">FEARLESS_02</div>
-        <div style="font-size:10px; color:rgba(0,242,255,0.5);">STATUS: ACTIVE</div>
+        <div class="data-label">DESIGNATION: SUBJECT_B</div>
+        <div class="name-display" id="outName2">FEARLESS_02</div>
+        <div style="font-size:10px; opacity:0.6;">STATUS: ACTIVE</div>
     </div>
 
     <div id="bottom-breaker">
-        <div class="bottom-logo-text">FEARLESS SYSTEM</div>
+        <div style="font-size:20px; letter-spacing:15px; font-weight:900; opacity:0.8;">FEARLESS SYSTEM PROTOCOL</div>
     </div>
 </div>
 
 <div id="lower-ui">
-    <div class="file-group">
-        <input type="file" id="file1">
-        <input type="file" id="file2">
+    <div class="input-row">
+        <div class="input-group">
+            <label>SUBJECT_A CODENAME</label>
+            <input type="text" id="nameInput1" placeholder="이름 입력 (실시간 반영)" oninput="syncName(1)">
+            <input type="file" id="file1" style="margin-top:5px;">
+        </div>
+        <div class="input-group">
+            <label>SUBJECT_B CODENAME</label>
+            <input type="text" id="nameInput2" placeholder="이름 입력 (실시간 반영)" oninput="syncName(2)">
+            <input type="file" id="file2" style="margin-top:5px;">
+        </div>
     </div>
-    <div class="ooc-group">
-        <button class="hud-btn" onclick="generateOOC()">GENERATE OOC</button>
-        <button class="hud-btn" onclick="copyOOC()">📋 COPY</button>
+    
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <button class="hud-btn" onclick="generateOOC()">GENERATE OOC REPORT</button>
+        <button class="hud-btn" onclick="copyOOC()">📋 COPY TO CLIPBOARD</button>
     </div>
     <textarea id="oocBox" placeholder="OOC 데이터가 여기에 생성됩니다..."></textarea>
 </div>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script>
-    // 이름 실시간 동기화 (기존 로직 유지)
-    // 원본 코드에는 이름 입력란이 없으므로, 필요시 하단 UI에 추가해야 작동합니다.
-    // 여기서는 개념적으로만 남겨둡니다.
+    // 마우스 커서 라이트 로직 (유지)
+    document.addEventListener('mousemove', (e) => {
+        const cursor = document.getElementById('cursor');
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+
+    // 🚨 [v7.1 추가] 실시간 이름 동기화 함수
     function syncName(id) {
         const val = document.getElementById('nameInput' + id).value;
+        // 입력이 없으면 기본 이름 표시
         document.getElementById('outName' + id).innerText = val || 'FEARLESS_' + (id===1?'01':'02');
     }
 
-    // 이미지 업로드 (background 방식 - 수정됨)
-    file1.onchange = e=>{
-        if(e.target.files[0]) {
-            const url = URL.createObjectURL(e.target.files[0]);
-            char1.style.backgroundImage = `url(${url})`;
-            char1.style.backgroundSize = 'cover'; // 로고 Placeholder 제거
-        }
-    };
-    file2.onchange = e=>{
-        if(e.target.files[0]) {
-            const url = URL.createObjectURL(e.target.files[0]);
-            char2.style.backgroundImage = `url(${url})`;
-            char2.style.backgroundSize = 'cover';
-        }
-    };
+    // 이미지 업로드 (Placeholder 제거 로직 유지)
+    file1.onchange = e => { if(e.target.files[0]) char1.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`; };
+    file2.onchange = e => { if(e.target.files[0]) char2.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`; };
 
     // 타이핑 효과 (유지)
-    async function type(text){
+    async function type(text, isWarning = false) {
         const div = document.createElement("div");
-        div.className="line";
-        screen.appendChild(div);
-        for(let i=0;i<text.length;i++){
+        div.className = isWarning ? "line warning" : "line";
+        document.getElementById('screen').appendChild(div);
+        for(let i=0; i<text.length; i++) {
             div.innerText += text[i];
-            await new Promise(r=>setTimeout(r,30)); // 속도 약간 조정
+            await new Promise(r => setTimeout(r, 25)); // 속도 약간 상향
         }
     }
 
-    // 임무 데이터 및 흐름 (유지하되 WARNING 연출 수정)
+    // 임무 데이터 (유지하되 WARNING 연출 수정)
     let lastMission="";
     async function missionFlow(){
         const missions=["서울 강남 차원 균열", "홍대 빌런 군집", "여의도 변이체 출현", "잠실 S급 개체"];
         lastMission=missions[Math.floor(Math.random()*missions.length)];
 
-        await type("> DECRYPTING MISSION DATA...");
+        await type("> DECRYPTING PROTOCOL DATA...");
         await type("> ERROR... BYPASSING SECURITY...");
         await type("> RECALCULATING PARAMETERS...");
-        await type("> TARGET: "+lastMission);
+        await type("> TARGET LOCATED: "+lastMission);
         await new Promise(r=>setTimeout(r,800));
         await type("> UPDATE: THREAT LEVEL RAISED");
         await type("> TARGET: S-CLASS ENTITY DETECTED");
 
-        // WARNING 연출 (glitch 추가)
+        // WARNING 연출 수정 (glitch 추가)
         if(Math.random()<0.6){
             const warn=document.createElement("div");
             warn.className="warning glitch";
@@ -257,9 +247,11 @@
         }
     }
 
-    // 시작
+    // 🚨 [v7.1 수정] 미션 시작 버튼 활성화
     async function startMission(){
-        screen.innerHTML="";
+        const screen = document.getElementById('screen');
+        screen.innerHTML = ""; // 이전 미션 삭제
+        // 미션 버튼 안 먹힘 해결: missionFlow 호출
         await missionFlow();
     }
 
@@ -272,44 +264,23 @@
     }
     function copyOOC(){ oocBox.select(); document.execCommand("copy"); alert("OOC 데이터 복사됨"); }
 
-    // 📸 PROTOCOL SAVE (기존 정밀 캡처 로직 적용)
+    // 저장 (정밀 캡처 로직 유지)
     async function saveImage(){
-        const topControls = document.getElementById('top-controls');
-        const lowerUi = document.getElementById('lower-ui');
-        
-        // 캡처 전 UI 숨김
-        topControls.style.display = 'none';
-        lowerUi.style.display = 'none';
+        const lower = document.getElementById('lower-ui');
+        const top = document.getElementById('top-controls');
+        lower.style.display = 'none'; top.style.display = 'none';
 
-        const target = document.getElementById("capture");
-
-        // 1. html2canvas로 원본 캡처
-        const rawCanvas = await html2canvas(target, {
-            backgroundColor: "#000",
-            scale: 2, // 고화질
-            useCORS: true,
-            logging: false,
-            width: 1200, height: 800, windowWidth: 1200, windowHeight: 800, x: 0, y: 0
+        const canvas = await html2canvas(document.getElementById('capture'), {
+            scale: 2, backgroundColor: "#000", useCORS: true,
+            width: 1200, height: 800, windowWidth: 1200, windowHeight: 800
         });
 
-        // 2. 강제 비율 보정 캔버스 생성 (2400x1600)
-        const finalCanvas = document.createElement("canvas");
-        finalCanvas.width = 1200 * 2;
-        finalCanvas.height = 800 * 2;
-        const ctx = finalCanvas.getContext("2d");
-
-        // 3. 비율에 맞춰서 그리기
-        ctx.drawImage(rawCanvas, 0, 0, rawCanvas.width, rawCanvas.height, 0, 0, finalCanvas.width, finalCanvas.height);
-
-        // 4. 다운로드
         const link = document.createElement("a");
-        link.download = "FEARLESS_HUD_REPORT.png";
-        link.href = finalCanvas.toDataURL("image/png");
+        link.download = "FEARLESS_LOG.png";
+        link.href = canvas.toDataURL();
         link.click();
 
-        // UI 복구
-        topControls.style.display = 'flex';
-        lowerUi.style.display = 'flex';
+        lower.style.display = 'flex'; top.style.display = 'flex';
     }
 
     // 오류 알림 초기화 (개념적 남김)
