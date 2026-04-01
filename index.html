@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FEARLESS HUD PROTOCOL v7.0</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+KR:wght@300;700&display=swap');
+
+        :root {
+            --neon-blue: #00f2ff;
+            --dark-blue: #004455;
+            --hud-bg: rgba(0, 0, 0, 0.9);
+            --glow: 0 0 15px rgba(0, 242, 255, 0.6);
+            --font-main: 'Orbitron', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            margin: 0; background: #000; color: var(--neon-blue);
+            font-family: var(--font-main);
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            padding: 20px; overflow-x: hidden; cursor: crosshair;
+        }
+
+        /* 컨트롤러 영역 */
+        #top-controls { margin-bottom: 20px; display: flex; gap: 15px; z-index: 5000; }
+        button.hud-btn {
+            background: transparent; border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            padding: 10px 30px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold;
+            transition: 0.3s; text-transform: uppercase; letter-spacing: 2px;
+            box-shadow: inset 0 0 5px rgba(0, 242, 255, 0.3);
+        }
+        button.hud-btn:hover { background: var(--neon-blue); color: #000; box-shadow: var(--glow); }
+
+        /* 🚨 메인 HUD 캡처 영역 (1200x800 고정) 🚨 */
+        #capture {
+            width: 1200px; height: 800px; background: #000;
+            position: relative; box-sizing: border-box;
+            border: 2px solid var(--dark-blue);
+            /* 그리드 및 라디얼 배경 */
+            background-image: 
+                linear-gradient(rgba(0, 242, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px),
+                radial-gradient(circle at center, #001115 0%, #000 100%);
+            background-size: 30px 30px, 30px 30px, 100% 100%;
+            overflow: hidden;
+            box-shadow: inset 0 0 100px rgba(0,0,0,1);
+        }
+
+        /* 스캔라인 연출 */
+        .scanline {
+            position: absolute; width: 100%; height: 2px;
+            background: rgba(255,255,255,0.1); box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            top: 0; animation: scan 4s linear infinite; pointer-events: none; z-index: 100;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        /* 좌우 비대칭 홀로그램 패널 (image_1.png 컨셉) */
+        .hologram-panel {
+            position: absolute; background: rgba(0, 242, 255, 0.03);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+        
+        /* 왼쪽 패널: 상단 배치 */
+        #panel-left {
+            top: 40px; left: 40px; width: 300px; height: 400px;
+            clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%); /* 하단 모서리 컷 */
+            display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+
+        /* 오른쪽 패널: 하단 배치 */
+        #panel-right {
+            bottom: 40px; right: 40px; width: 300px; height: 400px;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 10%); /* 상단 모서리 컷 */
+            display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+
+        /* 캐릭터 사진 프레임 */
+        .photo-frame {
+            width: 220px; height: 220px; border: 1px solid var(--neon-blue);
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+            box-shadow: var(--glow); margin-bottom: 15px;
+            /* 기본 로고 placeholder */
+            background-image: url('「ARCH」 Symbol Logo White Ver.png');
+            background-color: rgba(0,0,0,0.5); background-size: 50%;
+        }
+
+        .data-label { font-size: 12px; color: var(--arch-gold); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .data-value { font-size: 20px; font-weight: 900; color: #fff; text-shadow: var(--glow); border-bottom: 1px solid var(--neon-blue); padding-bottom: 3px; margin-bottom: 10px; width: 100%; text-align: center;}
+
+        /* 중앙 코어 영역 (서큘러 게이지 & 로고) */
+        #center-core {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 500px; height: 500px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        
+        /* image_1.png의 원형 UI 레이어 구현 */
+        .circular-ui {
+            position: absolute; border-radius: 50%; border: 1px solid rgba(0, 242, 255, 0.1);
+            pointer-events: none;
+        }
+        .ui-1 { width: 100%; height: 100%; animation: rotate 20s linear infinite; border-dasharray: 5, 5; }
+        .ui-2 { width: 85%; height: 85%; animation: rotate-rev 15s linear infinite; border-width: 2px; border-style: dashed; }
+        .ui-3 { width: 70%; height: 70%; border-color: rgba(0, 242, 255, 0.3); box-shadow: 0 0 30px rgba(0, 242, 255, 0.1); }
+        
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes rotate-rev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+
+        /* 중앙 로고 */
+        .center-logo { width: 180px; opacity: 0.8; filter: drop-shadow(var(--glow)); z-index: 10; margin-bottom: 20px;}
+
+        /* 타이핑 화면 */
+        #screen {
+            width: 400px; max-height: 200px; text-align: left; z-index: 10;
+            font-family: monospace; font-size: 14px; overflow: hidden;
+            border-left: 2px solid var(--neon-blue); padding-left: 15px;
+        }
+        .line { margin: 3px 0; color: #fff; text-shadow: 0 0 5px #fff; }
+
+        /* 하단 로고 영역 (image_1.png 컨셉) */
+        #bottom-breaker {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 80px;
+            background: linear-gradient(to top, rgba(0, 242, 255, 0.1), transparent);
+            border-top: 1px solid rgba(0, 242, 255, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50;
+        }
+        .bottom-logo-text {
+            font-size: 28px; font-weight: 900; color: #fff; letter-spacing: 15px;
+            text-shadow: 0 0 20px #fff, var(--glow);
+            text-transform: uppercase;
+        }
+
+        /* 경고 및 특수 효과 */
+        .warning { color: #ff3333; text-shadow: 0 0 10px #ff0000; font-weight: bold;}
+        .glitch { animation: glitch 0.2s infinite; }
+        @keyframes glitch { 0% { transform: translate(0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+
+        /* 하단 업로드/OOC UI */
+        #lower-ui { width: 1200px; margin-top: 20px; display: flex; flex-direction: column; gap: 15px; background: rgba(255,255,255,0.05); padding: 20px; border: 1px solid #333; }
+        .file-group, .ooc-group { display: flex; gap: 10px; justify-content: center; align-items: center; }
+        input[type=file] { color: #ccc; font-size: 12px; }
+        textarea { width: 100%; height: 150px; background: #000; color: #00f2ff; border: 1px solid #00f2ff; font-family: monospace; padding: 10px; box-sizing: border-box; margin-top: 10px;}
+
+    </style>
+</head>
+<body>
+
+<div id="top-controls">
+    <button class="hud-btn" onclick="startMission()">INITIALIZE MISSION</button>
+    <button class="hud-btn" onclick="saveImage()">📸 PROTOCOL SAVE</button>
+    <button class="hud-btn" onclick="clearErrors()" style="border-color: #f33; color: #f33;">CLEAR ALERTS</button>
+</div>
+
+<div id="capture">
+    <div class="scanline"></div>
+    <div id="error-container"></div> <div id="panel-left" class="hologram-panel">
+        <div class="photo-frame" id="char1"></div>
+        <div class="data-label">SUBJECT_A // CODENAME</div>
+        <div class="data-value" id="outName1">FEARLESS_01</div>
+        <div style="font-size:10px; color:rgba(0,242,255,0.5);">STATUS: ACTIVE</div>
+    </div>
+
+    <div id="center-core">
+        <div class="circular-ui ui-1"></div>
+        <div class="circular-ui ui-2"></div>
+        <div class="circular-ui ui-3"></div>
+        
+        <img src="「ARCH」 Symbol Logo White Ver.png" class="center-logo">
+        
+        <div id="screen"></div>
+    </div>
+
+    <div id="panel-right" class="hologram-panel">
+        <div class="photo-frame" id="char2"></div>
+        <div class="data-label">SUBJECT_B // CODENAME</div>
+        <div class="data-value" id="outName2">FEARLESS_02</div>
+        <div style="font-size:10px; color:rgba(0,242,255,0.5);">STATUS: ACTIVE</div>
+    </div>
+
+    <div id="bottom-breaker">
+        <div class="bottom-logo-text">FEARLESS SYSTEM</div>
+    </div>
+</div>
+
+<div id="lower-ui">
+    <div class="file-group">
+        <input type="file" id="file1">
+        <input type="file" id="file2">
+    </div>
+    <div class="ooc-group">
+        <button class="hud-btn" onclick="generateOOC()">GENERATE OOC</button>
+        <button class="hud-btn" onclick="copyOOC()">📋 COPY</button>
+    </div>
+    <textarea id="oocBox" placeholder="OOC 데이터가 여기에 생성됩니다..."></textarea>
+</div>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script>
+    // 이름 실시간 동기화 (기존 로직 유지)
+    // 원본 코드에는 이름 입력란이 없으므로, 필요시 하단 UI에 추가해야 작동합니다.
+    // 여기서는 개념적으로만 남겨둡니다.
+    function syncName(id) {
+        const val = document.getElementById('nameInput' + id).value;
+        document.getElementById('outName' + id).innerText = val || 'FEARLESS_' + (id===1?'01':'02');
+    }
+
+    // 이미지 업로드 (background 방식 - 수정됨)
+    file1.onchange = e=>{
+        if(e.target.files[0]) {
+            const url = URL.createObjectURL(e.target.files[0]);
+            char1.style.backgroundImage = `url(${url})`;
+            char1.style.backgroundSize = 'cover'; // 로고 Placeholder 제거
+        }
+    };
+    file2.onchange = e=>{
+        if(e.target.files[0]) {
+            const url = URL.createObjectURL(e.target.files[0]);
+            char2.style.backgroundImage = `url(${url})`;
+            char2.style.backgroundSize = 'cover';
+        }
+    };
+
+    // 타이핑 효과 (유지)
+    async function type(text){
+        const div = document.createElement("div");
+        div.className="line";
+        screen.appendChild(div);
+        for(let i=0;i<text.length;i++){
+            div.innerText += text[i];
+            await new Promise(r=>setTimeout(r,30)); // 속도 약간 조정
+        }
+    }
+
+    // 임무 데이터 및 흐름 (유지하되 WARNING 연출 수정)
+    let lastMission="";
+    async function missionFlow(){
+        const missions=["서울 강남 차원 균열", "홍대 빌런 군집", "여의도 변이체 출현", "잠실 S급 개체"];
+        lastMission=missions[Math.floor(Math.random()*missions.length)];
+
+        await type("> DECRYPTING MISSION DATA...");
+        await type("> ERROR... BYPASSING SECURITY...");
+        await type("> RECALCULATING PARAMETERS...");
+        await type("> TARGET: "+lastMission);
+        await new Promise(r=>setTimeout(r,800));
+        await type("> UPDATE: THREAT LEVEL RAISED");
+        await type("> TARGET: S-CLASS ENTITY DETECTED");
+
+        // WARNING 연출 (glitch 추가)
+        if(Math.random()<0.6){
+            const warn=document.createElement("div");
+            warn.className="warning glitch";
+            warn.innerText="[CRITICAL] SENTINEL OVERLOAD";
+            screen.appendChild(warn);
+        }
+    }
+
+    // 시작
+    async function startMission(){
+        screen.innerHTML="";
+        await missionFlow();
+    }
+
+    // OOC 생성 및 복사 (유지)
+    function generateOOC(){
+        const phrases=["共鳴","破綻","侵蝕","侵食","暴走"];
+        const phrase=phrases[Math.floor(Math.random()*phrases.length)];
+        const ooc=`*[OOC: 새로운 상황 전개.\n\n"『${phrase}』" 컨셉 하에\n"${lastMission}" 임무를 시작한다. ]*`;
+        oocBox.value=ooc;
+    }
+    function copyOOC(){ oocBox.select(); document.execCommand("copy"); alert("OOC 데이터 복사됨"); }
+
+    // 📸 PROTOCOL SAVE (기존 정밀 캡처 로직 적용)
+    async function saveImage(){
+        const topControls = document.getElementById('top-controls');
+        const lowerUi = document.getElementById('lower-ui');
+        
+        // 캡처 전 UI 숨김
+        topControls.style.display = 'none';
+        lowerUi.style.display = 'none';
+
+        const target = document.getElementById("capture");
+
+        // 1. html2canvas로 원본 캡처
+        const rawCanvas = await html2canvas(target, {
+            backgroundColor: "#000",
+            scale: 2, // 고화질
+            useCORS: true,
+            logging: false,
+            width: 1200, height: 800, windowWidth: 1200, windowHeight: 800, x: 0, y: 0
+        });
+
+        // 2. 강제 비율 보정 캔버스 생성 (2400x1600)
+        const finalCanvas = document.createElement("canvas");
+        finalCanvas.width = 1200 * 2;
+        finalCanvas.height = 800 * 2;
+        const ctx = finalCanvas.getContext("2d");
+
+        // 3. 비율에 맞춰서 그리기
+        ctx.drawImage(rawCanvas, 0, 0, rawCanvas.width, rawCanvas.height, 0, 0, finalCanvas.width, finalCanvas.height);
+
+        // 4. 다운로드
+        const link = document.createElement("a");
+        link.download = "FEARLESS_HUD_REPORT.png";
+        link.href = finalCanvas.toDataURL("image/png");
+        link.click();
+
+        // UI 복구
+        topControls.style.display = 'flex';
+        lowerUi.style.display = 'flex';
+    }
+
+    // 오류 알림 초기화 (개념적 남김)
+    function clearErrors() { document.getElementById('error-container').innerHTML = ''; }
+</script>
+
+</body>
+</html>
