@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FEARLESS MISSION SYSTEM v8.5</title>
+    <title>FEARLESS MISSION SYSTEM v10.5 (KOR_BRANCH)</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+KR:wght@300;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Noto+Sans+KR:wght@300;700;900&display=swap');
 
         :root {
             --neon-blue: #00f2ff;
@@ -15,23 +15,40 @@
             --font-main: 'Orbitron', 'Noto Sans KR', sans-serif;
         }
 
+        * { box-sizing: border-box; outline: none; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-blue); }
+
         body {
             margin: 0; background: #050505; color: var(--neon-blue);
             font-family: var(--font-main);
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
-            padding: 20px; overflow-x: hidden;
+            padding: 20px; overflow-x: hidden; cursor: none;
         }
 
-        /* 컨트롤러 */
-        #top-controls { margin-bottom: 20px; display: flex; gap: 15px; z-index: 5000; }
+        #cursor {
+            position: fixed; width: 30px; height: 30px; border: 1px solid var(--neon-blue);
+            border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); z-index: 20000;
+        }
+        #cursor::after {
+            content: ''; position: absolute; width: 4px; height: 4px; background: var(--neon-blue);
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+
+        #top-controls { margin-bottom: 20px; display: flex; gap: 15px; z-index: 5000; pointer-events: auto; }
         button.hud-btn {
             background: rgba(0, 242, 255, 0.05); border: 1px solid var(--neon-blue); color: var(--neon-blue);
-            padding: 10px 25px; cursor: pointer; font-family: 'Orbitron'; font-weight: bold;
-            transition: 0.3s; text-transform: uppercase; letter-spacing: 1px;
+            padding: 12px 25px; cursor: pointer !important; font-family: 'Orbitron', 'Noto Sans KR'; font-weight: bold;
+            transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; pointer-events: auto; font-size: 13px;
         }
-        button.hud-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); }
+        button.hud-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        
+        button.reset-btn { border-color: var(--danger-red); color: var(--danger-red); background: rgba(255, 62, 62, 0.05); }
+        button.reset-btn:hover { background: var(--danger-red); color: #fff; box-shadow: 0 0 20px var(--danger-red); }
+        
+        button.berserk-btn { border-color: #8b0000; color: #ff0000; background: rgba(139, 0, 0, 0.2); animation: mildShake 0.5s infinite; }
+        button.berserk-btn:hover { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
 
-        /* 메인 HUD (1200x800) */
         #capture {
             width: 1200px; height: 800px; background: #000;
             position: relative; box-sizing: border-box;
@@ -41,238 +58,617 @@
                 linear-gradient(90deg, rgba(0, 242, 255, 0.03) 1px, transparent 1px),
                 radial-gradient(circle at center, #001115 0%, #000 100%);
             background-size: 30px 30px, 30px 30px, 100% 100%;
-            overflow: hidden;
+            overflow: hidden; transition: 0.1s;
         }
 
-        /* 캐릭터 패널 */
+        /* --- 연출용 애니메이션 --- */
+        @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+        .low-noise { animation: flicker 0.3s infinite; }
+        
+        @keyframes mildShake { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(-1px, 1px); } }
+        .mid-noise { animation: mildShake 0.1s infinite; }
+
+        @keyframes severeShake { 0%, 100% { transform: translate(0,0) rotate(0deg); } 20% { transform: translate(-3px, 3px) rotate(-1deg); } 40% { transform: translate(3px, -3px) rotate(1deg); filter: hue-rotate(90deg) contrast(1.5); } 60% { transform: translate(-3px, -3px) rotate(0deg); } 80% { transform: translate(3px, 3px) rotate(-1deg); filter: invert(0.8); } }
+        .critical-error { animation: severeShake 0.4s infinite; border-color: var(--danger-red) !important; }
+        .red-alert { box-shadow: inset 0 0 100px rgba(255, 0, 62, 0.5) !important; filter: hue-rotate(180deg) invert(1) contrast(1.5) !important;}
+        
+        @keyframes calmingWave { 0%, 100% { opacity: 0; transform: scale(1); } 50% { opacity: 0.2; transform: scale(1.1); } }
+        .calming-effect { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(0,242,255,0.2) 0%, transparent 70%); mix-blend-mode: color-dodge; animation: calmingWave 2s infinite alternate; pointer-events: none; z-index: 9999; }
+        
+        @keyframes healFlash { 0% { box-shadow: inset 0 0 100px rgba(0, 242, 255, 0.8); } 100% { box-shadow: inset 0 0 0 transparent; } }
+        .heal-flash { animation: healFlash 1s ease-out; }
+
+        @keyframes colorReset { from { filter: hue-rotate(180deg) invert(1) contrast(1.5); } to { filter: none; } }
+        .stage-calming #capture { animation: colorReset 2s forwards; }
+
         .hologram-panel {
             position: absolute; background: rgba(0, 242, 255, 0.02);
             border: 1px solid rgba(0, 242, 255, 0.2); padding: 20px; text-align: center;
+            transition: 0.3s; z-index: 5; pointer-events: none;
         }
         #panel-left { top: 40px; left: 40px; width: 320px; height: 460px; clip-path: polygon(0 0, 100% 0, 100% 90%, 90% 100%, 0 100%); }
         #panel-right { bottom: 40px; right: 40px; width: 320px; height: 460px; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 10%); }
 
-        .photo-frame {
-            width: 240px; height: 240px; border: 1px solid var(--neon-blue);
-            background: url('「Fearless」 Symbol Logo White Ver.png') no-repeat center / 40% #0a0a0a;
-            background-size: cover; margin: 0 auto 15px; box-shadow: 0 0 15px rgba(0,242,255,0.2);
-        }
-
+        .photo-frame { width: 240px; height: 240px; border: 1px solid var(--neon-blue); background: #0a0a0a; background-size: cover; margin: 0 auto 15px; box-shadow: 0 0 15px rgba(0,242,255,0.1); }
         .role-tag { font-size: 11px; letter-spacing: 3px; color: var(--arch-gold); margin-bottom: 5px; font-weight: bold; }
-        .name-display { font-size: 26px; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--neon-blue); border-bottom: 1px solid var(--neon-blue); padding-bottom: 5px; margin-bottom: 15px; }
+        .name-display { font-size: 26px; font-weight: 900; color: #fff; text-shadow: 0 0 10px var(--neon-blue); border-bottom: 1px solid var(--neon-blue); padding-bottom: 5px; margin-bottom: 15px; letter-spacing: 1px; }
 
-        /* 중앙 스크린 */
         #center-core {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 540px; text-align: center; z-index: 10;
+            width: 540px; text-align: center; z-index: 1000; display: flex; flex-direction: column; align-items: center; gap: 15px; pointer-events: auto;
         }
         #screen {
-            width: 500px; height: 320px; margin: 0 auto; text-align: left;
+            width: 520px; height: 340px; text-align: left;
             font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: #eee;
-            border-left: 3px solid var(--neon-blue); padding: 15px;
-            background: rgba(0,0,0,0.7); overflow-y: hidden; line-height: 1.6;
-            border-right: 1px solid rgba(0, 242, 255, 0.1);
+            border-left: 3px solid var(--neon-blue); padding: 15px 20px;
+            background: rgba(0,0,0,0.85); overflow-y: auto; line-height: 1.7;
+            border-right: 1px solid rgba(0, 242, 255, 0.1); 
+            word-break: break-all; white-space: pre-wrap; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,1); pointer-events: auto;
         }
-        .line { margin-bottom: 6px; }
+        .line { margin-bottom: 8px; }
         .warning { color: var(--danger-red); font-weight: bold; text-shadow: 0 0 8px #ff0000; }
-        .glitch { animation: glitch 0.2s infinite; color: var(--danger-red); }
-        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-3px, 2px); } 40% { transform: translate(-3px, -2px); } 60% { transform: translate(3px, 2px); } 80% { transform: translate(3px, -2px); } 100% { transform: translate(0); } }
-
-        /* 상태 UI */
-        #comm { position: absolute; top: 20px; right: 20px; font-size: 12px; color: var(--arch-gold); }
-        #status-display { position: absolute; bottom: 20px; left: 20px; text-align: left; font-size: 11px; color: rgba(0, 242, 255, 0.6); line-height: 1.5; }
-
-        /* 선택지 */
-        .choice-container { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .choice-row { display: flex; gap: 15px; }
-        .choice-btn { 
-            background: #000; border: 1px solid var(--neon-blue); color: #fff; 
-            padding: 8px 20px; cursor: pointer; font-size: 13px; font-family: 'Orbitron', 'Noto Sans KR';
-            transition: 0.2s;
+        .glitch { animation: glitchText 0.15s infinite; color: var(--danger-red); font-family: 'Orbitron'; font-weight: 900; letter-spacing: 2px;}
+        .heal-text { color: var(--neon-blue); font-weight: bold; text-shadow: 0 0 8px var(--neon-blue); }
+        .system-msg { color: #888; font-size: 11px; }
+        
+        @keyframes glitchText { 
+            0% { transform: translate(0); text-shadow: 2px 0 red, -2px 0 blue; } 
+            20% { transform: translate(-2px, 2px); } 
+            40% { transform: translate(-2px, -2px); text-shadow: -2px 0 red, 2px 0 blue; } 
+            60% { transform: translate(2px, 2px); } 
+            80% { transform: translate(2px, -2px); } 
+            100% { transform: translate(0); } 
         }
-        .choice-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 10px var(--neon-blue); }
 
-        /* 입력 UI 하단 */
-        #lower-ui { width: 1200px; margin-top: 20px; background: rgba(255,255,255,0.03); padding: 25px; border: 1px solid #333; box-sizing: border-box; }
+        #comm { position: absolute; top: 20px; right: 20px; font-size: 11px; color: var(--arch-gold); letter-spacing: 1px; font-weight: bold; }
+        #status-display { position: absolute; bottom: 20px; left: 20px; text-align: left; font-size: 12px; color: rgba(0, 242, 255, 0.8); line-height: 1.6; letter-spacing: 1px; font-weight: bold; }
+
+        #contam-wrapper { position: absolute; bottom: 100px; left: 40px; width: 320px; z-index: 10; transition: 0.3s; }
+        .contam-label { font-size: 10px; color: var(--neon-blue); display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; }
+        #contam-bar { width: 100%; height: 8px; background: rgba(0, 242, 255, 0.1); border: 1px solid var(--neon-blue); position: relative; transition: 0.3s;}
+        #contam-fill { width: 0%; height: 100%; background: var(--neon-blue); transition: 0.5s; box-shadow: 0 0 10px var(--neon-blue); }
+
+        .choice-container { display: flex; flex-direction: column; gap: 10px; align-items: center; width: 100%; pointer-events: auto; }
+        .choice-row { display: flex; gap: 10px; width: 100%; justify-content: center; flex-wrap: wrap; }
+        .choice-btn { 
+            background: rgba(0,0,0,0.9); border: 1px solid var(--neon-blue); color: #fff; 
+            padding: 12px 20px; cursor: pointer !important; font-size: 12px; font-family: 'Noto Sans KR'; font-weight: 700;
+            transition: 0.2s; max-width: 250px; word-break: keep-all; pointer-events: auto;
+        }
+        .choice-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 15px var(--neon-blue); transform: translateY(-2px); }
+
+        /* --- 부서지는 선택지 연출 (오염도 85% 이상) --- */
+        @keyframes choiceGlitch {
+            0% { transform: translate(0) skew(0); opacity: 1; }
+            20% { transform: translate(-2px, 2px) skew(-5deg); opacity: 0.8; border-color: red;}
+            40% { transform: translate(-2px, -2px) skew(5deg); opacity: 0.9; text-shadow: 2px 0 red; }
+            60% { transform: translate(2px, 2px) skew(-3deg); opacity: 0.7; }
+            80% { transform: translate(2px, -2px) skew(3deg); opacity: 0.8; text-shadow: -2px 0 blue; }
+            100% { transform: translate(0) skew(0); opacity: 1; }
+        }
+        .choice-btn.broken {
+            animation: choiceGlitch 0.3s infinite;
+            border-color: rgba(255,0,0,0.5); color: var(--danger-red);
+            background: rgba(50, 0, 0, 0.8); font-family: 'Orbitron', 'Noto Sans KR';
+        }
+        .choice-btn.broken:hover { background: var(--danger-red); color: #fff; }
+
+        #lower-ui { width: 1200px; margin-top: 20px; background: rgba(255,255,255,0.02); padding: 25px; border: 1px solid #333; box-sizing: border-box; pointer-events: auto; }
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 20px; }
         .input-group { display: flex; flex-direction: column; gap: 8px; }
-        input[type=text], textarea { background: #111; border: 1px solid #444; color: #fff; padding: 10px; outline: none; }
-        textarea { width: 100%; height: 180px; color: var(--neon-blue); margin-top: 10px; resize: none; font-size: 12px; }
+        .role-select { background: #000; color: var(--arch-gold); border: 1px solid var(--arch-gold); padding: 10px; font-weight: bold; font-family: 'Orbitron', 'Noto Sans KR'; cursor: pointer !important; }
+        input[type=text], textarea { background: #0a0a0a; border: 1px solid #444; color: #fff; padding: 12px; font-family: inherit; font-size: 13px; pointer-events: auto; }
+        input:focus { border-color: var(--neon-blue); }
+        textarea { width: 100%; height: 180px; color: var(--neon-blue); margin-top: 10px; resize: none; line-height: 1.6; }
     </style>
 </head>
 <body>
 
+<div id="cursor"></div>
+<div id="calming-layer"></div>
 <div id="top-controls">
     <button class="hud-btn" id="mainStartBtn" onclick="startMission()">MISSION START</button>
+    <button class="hud-btn reset-btn" onclick="resetContamination()">오염도 긴급 초기화</button>
+    <button class="hud-btn berserk-btn" onclick="forceBerserk()">[DANGER] 폭주 강제 유발 100%</button>
     <button class="hud-btn" onclick="saveImage()">📸 SAVE IMAGE</button>
 </div>
 
 <div id="capture">
-    <div id="comm"></div>
-    <div id="status-display"></div>
+    <div id="comm">[HQ] 피어리스 지휘 본부 통신 연결 완료. 대기하십시오.</div>
+    <div id="status-display">
+        심박수: 72 BPM<br>감각 부하: 안정 (STABLE)<br>동기화율: 50%
+    </div>
+
+    <div id="contam-wrapper">
+        <div class="contam-label" id="contam-label-text">
+            <span>오염 폭주 임계치 (CONTAMINATION)</span>
+            <span id="contam-val">0%</span>
+        </div>
+        <div id="contam-bar"><div id="contam-fill"></div></div>
+    </div>
 
     <div id="panel-left" class="hologram-panel">
         <div class="photo-frame" id="char1"></div>
-        <div class="role-tag">SENTINEL</div>
-        <div class="name-display" id="outName1">FEARLESS_S</div>
-        <div style="font-size:10px; text-align:left; opacity:0.7;">STABILITY [||||||....] 62%</div>
+        <div class="role-tag" id="outRole1">SENTINEL</div>
+        <div class="name-display" id="outName1">AGENT_A</div>
+        <div style="font-size:10px; text-align:left; opacity:0.7; color:#fff;" id="statDesc1">STABILITY [||||||....] 62%<br>약물 억제 투여 대기 중</div>
     </div>
 
     <div id="center-core">
-        <div id="screen"></div>
+        <div id="screen">
+            <div class="line" style="color:var(--arch-gold); font-weight:bold; letter-spacing: 2px;">[ FEARLESS SYSTEM STANDBY ]</div>
+            <div class="line">하단의 요원 역할과 식별명을 입력한 후, 상단의 'MISSION START' 버튼을 눌러 작전을 개시하십시오.</div>
+            <div class="line" style="color:var(--neon-blue); opacity:0.7; margin-top:10px;">* 주의: 현재 SS급 센티넬 [체이서], [위스퍼]는 파견 중입니다. 현장 요원들의 각별한 주의를 요합니다.</div>
+        </div>
         <div id="choice-area" class="choice-container"></div>
     </div>
 
     <div id="panel-right" class="hologram-panel">
         <div class="photo-frame" id="char2"></div>
-        <div class="role-tag">GUIDE</div>
-        <div class="name-display" id="outName2">FEARLESS_G</div>
-        <div style="font-size:10px; text-align:left; opacity:0.7;">RESONANCE [||||||||..] 88%</div>
+        <div class="role-tag" id="outRole2">GUIDE</div>
+        <div class="name-display" id="outName2">AGENT_B</div>
+        <div style="font-size:10px; text-align:left; opacity:0.7; color:#fff;" id="statDesc2">RESONANCE [||||||||..] 88%<br>가이딩 파장 방사 시스템 정상</div>
     </div>
 </div>
 
 <div id="lower-ui">
     <div class="input-row">
         <div class="input-group">
-            <label style="font-size:11px; color:var(--arch-gold);">SENTINEL NAME</label>
-            <input type="text" id="name1" placeholder="이름 입력" oninput="syncName(1)">
-            <input type="file" id="file1">
+            <select id="role1" class="role-select" onchange="syncUI(1)">
+                <option value="SENTINEL">센티넬 (SENTINEL)</option>
+                <option value="GUIDE">가이드 (GUIDE)</option>
+            </select>
+            <input type="text" id="name1" placeholder="식별명을 입력하세요" oninput="syncUI(1)">
+            <input type="file" id="file1" style="font-size:11px; color:#aaa;">
         </div>
         <div class="input-group">
-            <label style="font-size:11px; color:var(--arch-gold);">GUIDE NAME</label>
-            <input type="text" id="name2" placeholder="이름 입력" oninput="syncName(2)">
-            <input type="file" id="file2">
+            <select id="role2" class="role-select" onchange="syncUI(2)">
+                <option value="GUIDE">가이드 (GUIDE)</option>
+                <option value="SENTINEL">센티넬 (SENTINEL)</option>
+            </select>
+            <input type="text" id="name2" placeholder="식별명을 입력하세요" oninput="syncUI(2)">
+            <input type="file" id="file2" style="font-size:11px; color:#aaa;">
         </div>
     </div>
     <div style="display:flex; gap:10px;">
-        <button class="hud-btn" onclick="generateOOC()">GENERATE OOC</button>
-        <button class="hud-btn" onclick="copyOOC()">📋 COPY</button>
+        <button class="hud-btn" onclick="generateOOC()" style="width:100%;">GENERATE OOC DOCUMENT</button>
+        <button class="hud-btn" onclick="copyOOC()" style="width:150px;">📋 COPY</button>
     </div>
-    <textarea id="oocBox" readonly></textarea>
+    <textarea id="oocBox" readonly placeholder="작전 브리핑 및 OOC 상황문이 이곳에 생성됩니다..."></textarea>
 </div>
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script>
-    function syncName(id) {
+    const cursor = document.getElementById('cursor');
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px';
+    });
+
+    let contamLevel = 0; 
+    let currentMissionContext = null;
+    let isBerserk = false; 
+    let currentPhase = 0; 
+    let isTyping = false;
+
+    function syncUI(id) {
+        const role = document.getElementById('role' + id).value;
         const val = document.getElementById('name' + id).value;
-        document.getElementById('outName' + id).innerText = val.toUpperCase() || (id === 1 ? 'SENTINEL' : 'GUIDE');
+        document.getElementById('outRole' + id).innerText = role;
+        document.getElementById('outName' + id).innerText = val.toUpperCase() || 'AGENT';
+        
+        const statDesc = document.getElementById('statDesc' + id);
+        if (role === 'SENTINEL') statDesc.innerHTML = "STABILITY [||||||....] 62%<br>약물 억제 투여 대기 중";
+        else statDesc.innerHTML = "RESONANCE [||||||||..] 88%<br>가이딩 파장 방사 시스템 정상";
     }
 
     file1.onchange = e => { if(e.target.files[0]) char1.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`; };
     file2.onchange = e => { if(e.target.files[0]) char2.style.backgroundImage = `url(${URL.createObjectURL(e.target.files[0])})`; };
 
-    async function type(text, type = 'normal') {
+    // --- 타이핑 엔진 ---
+    async function type(text, msgType = 'normal') {
+        const screen = document.getElementById('screen');
         const div = document.createElement("div");
         div.className = "line";
-        if(type === 'warning') div.classList.add('warning');
-        if(type === 'glitch') div.classList.add('glitch');
-        document.getElementById('screen').appendChild(div);
+        if(msgType === 'warning') div.classList.add('warning');
+        if(msgType === 'glitch') div.classList.add('glitch');
+        if(msgType === 'system-msg') div.classList.add('system-msg');
+        if(msgType === 'heal') div.classList.add('heal-text');
         
+        screen.appendChild(div);
         for(let i=0; i<text.length; i++) {
-            div.innerText += text[i];
-            await new Promise(r => setTimeout(r, 20));
+            if (text[i] === ' ') div.innerHTML += '&nbsp;';
+            else div.appendChild(document.createTextNode(text[i]));
+            screen.scrollTop = screen.scrollHeight;
+            await new Promise(r => setTimeout(r, 10)); // 속도 상향
         }
     }
 
-    let currentLoc = "";
+    // --- 폭주 단계별 상태 체크 및 UI 파괴 연출 ---
+    async function checkContaminationEffects() {
+        const capture = document.getElementById('capture');
+        capture.classList.remove('low-noise', 'mid-noise', 'critical-error', 'red-alert');
+
+        if (contamLevel < 40) {
+            currentPhase = 0;
+        } else if (contamLevel >= 40 && contamLevel < 70) {
+            capture.classList.add('low-noise');
+            if(currentPhase < 1) {
+                currentPhase = 1;
+                await type(">> [시스템 경고] 오염도 상승. 약물 억제력이 한계에 달하고 있습니다.", "system-msg");
+            }
+        } else if (contamLevel >= 70 && contamLevel < 85) {
+            capture.classList.add('mid-noise');
+            if(currentPhase < 2) {
+                currentPhase = 2;
+                await type(">> WARNING: 감각 과부하 발생. 통증이 뇌관을 파고듭니다.", "warning");
+                await type(">> 긴급 가이딩이 요구됩니다.", "warning glitch");
+            }
+        } else if (contamLevel >= 85 && contamLevel < 100) {
+            capture.classList.add('critical-error');
+            if(currentPhase < 3) {
+                currentPhase = 3;
+                await type(">> ERRO R ERR O R", "warning glitch");
+                await type(">> 시스템UI 손상. 이성이 끊어지기 직전입니다.", "warning glitch");
+            }
+        }
+    }
+
+    async function updateContamination(amount) {
+        contamLevel = Math.min(Math.max(contamLevel + amount, 0), 100);
+        const fill = document.getElementById('contam-fill');
+        const val = document.getElementById('contam-val');
+        const labelText = document.getElementById('contam-label-text');
+        
+        fill.style.width = contamLevel + '%'; val.innerText = contamLevel + '%';
+        const sName = document.getElementById('name1').value || '센티넬';
+        const gName = document.getElementById('name2').value || '';
+
+        if(contamLevel < 100) {
+            isBerserk = false;
+            document.body.classList.remove('stage-calming');
+            document.getElementById('calming-layer').classList.remove('calming-effect');
+        }
+
+        if(contamLevel >= 80 && contamLevel < 100) {
+            fill.style.background = "var(--danger-red)"; val.style.color = "var(--danger-red)"; labelText.style.color = "var(--danger-red)";
+        } else if (contamLevel === 100) {
+            if (!isBerserk) {
+                isBerserk = true;
+                fill.style.background = "var(--danger-red)"; val.style.color = "var(--danger-red)"; labelText.style.color = "var(--danger-red)";
+                await handleBerserkEvent(sName, gName);
+                return;
+            }
+        } else {
+            fill.style.background = "var(--neon-blue)"; val.style.color = "var(--neon-blue)"; labelText.style.color = "var(--neon-blue)";
+        }
+        
+        await checkContaminationEffects();
+    }
+
+    // --- 버튼: 100% 폭주 강제 유발 ---
+    async function forceBerserk() {
+        if(isBerserk) return;
+        if(confirm("[위험] 강제로 오염도를 100%로 끌어올리겠습니까? 센티넬이 즉시 폭주합니다.")) {
+            updateContamination(100 - contamLevel);
+        }
+    }
+
+    // --- 진정/치유 효과 연출 ---
+    function triggerHealEffect() {
+        const capture = document.getElementById('capture');
+        capture.classList.add('heal-flash');
+        setTimeout(() => capture.classList.remove('heal-flash'), 1000);
+    }
+
+    async function handleBerserkEvent(sName, gName) {
+        document.getElementById('choice-area').innerHTML = ""; 
+        const capture = document.getElementById('capture');
+        capture.classList.add('critical-error', 'red-alert');
+
+        await type(">> ...다 부수면 되잖아", "warning glitch");
+        await type(">> 왜 멈추라고 해", "warning glitch");
+        await type("-----------------------------------");
+        await type(`>> [FATAL ERROR] 센티넬 ${sName}의 오염도 100% 도달. 강제 구속 프로토콜 붕괴.`, "warning glitch");
+
+        if (gName.trim() !== "") {
+            await triggerBerserkCalming(sName, gName);
+        } else {
+            await type(">> [긴급 경고] 현장에 가이드 부재. 이성 상실 구역으로 전환됩니다. 전 요원 즉시 대피하십시오.", "warning glitch");
+        }
+    }
+
+    async function triggerBerserkCalming(sName, gName) {
+        document.body.classList.add('stage-calming');
+        document.getElementById('calming-layer').classList.add('calming-effect');
+
+        await type(`>> [가이딩 개시] 가이드 ${gName}가 목숨을 걸고 폭주하는 ${sName}에게 밀착, 강제 스킨십을 통한 심층 가이딩을 시도합니다.`, "normal");
+        await type(">> 얽히는 파장 속에서 치명적인 쾌락과 안정이 뇌관을 강타합니다...", "heal");
+        
+        setTimeout(async () => {
+            await type(`>> [진정 완료] 거친 숨결이 잦아들며 센티넬의 이성이 돌아옵니다. 폭주가 제압되었습니다.`, "system-msg");
+            contamLevel = 45; currentPhase = 0;
+            updateContamination(0); 
+            isBerserk = false; 
+            document.getElementById('capture').classList.remove('critical-error', 'red-alert');
+        }, 3000);
+    }
+
+    function resetContamination() {
+        if (confirm("긴급 약물 투여 및 임시 가이딩을 통해 오염도를 0%로 초기화하시겠습니까?")) {
+            contamLevel = 0; currentPhase = 0;
+            updateContamination(0);
+            isBerserk = false; 
+            document.getElementById('capture').classList.remove('low-noise', 'mid-noise', 'critical-error', 'red-alert', 'heal-flash');
+            document.body.classList.remove('stage-calming');
+            document.getElementById('calming-layer').classList.remove('calming-effect');
+            type(">> [완료] 오염도가 완전히 초기화되었습니다.", "normal");
+        }
+    }
+
+    // --- 한국형 어반 판타지 [Fearless] 무거운 미션 DB 5선 ---
+    const missionDB = [
+        {
+            location: "서울 강남역 사거리 (B급 차원문 게이트)",
+            desc: "차원문 개방으로 다수의 하급, 중급 괴수가 쏟아져 나왔습니다. 민간인 대피율 80%. 즉각적인 섬멸이 필요합니다.",
+            phase1: "[전술 지시] 괴수 군집이 방어선을 뚫기 직전입니다. 센티넬의 화력을 어떻게 운용하시겠습니까?",
+            choices: [
+                {
+                    text: "능력 과부하를 통한 광역 섬멸 (오염도 ⬆)",
+                    phase2: "센티넬이 한계치 이상의 힘을 끌어내어 반경 500m 안의 괴수들을 흔적도 없이 찢어버립니다. 그러나 오염도가 급증하며 각혈합니다.",
+                    subChoices: [
+                        { text: "[가이드] 점막 접촉(키스)으로 파장 긴급 안정 (오염도 ⬇⬇)", result: ">> 피비린내 속에서 진득한 가이딩이 이어집니다. 파장이 안정화되며 위기를 넘겼습니다.", warn: false, contam: -30 },
+                        { text: "[센티넬] 약물을 주사하며 고통을 억누름 (오염도 ⬆)", result: ">> 가이드의 도움을 거부하고 억제제를 목에 꽂아 넣습니다. 임시방편일 뿐, 몸이 서서히 망가져 갑니다.", warn: true, contam: 15 }
+                    ]
+                },
+                {
+                    text: "가이드의 보호막 전개 후 국지적 타격 (오염도 ⬇)",
+                    phase2: "가이드가 후방에서 안정적인 파장을 뿜어 센티넬의 감각을 보호합니다. 완벽한 연계로 피해 없이 적을 제압 중입니다.",
+                    subChoices: [
+                        { text: "[페어 연계] 맞잡은 손을 통해 싱크로율 극대화 (오염도 ⬇)", result: ">> 두 사람의 파장이 하나처럼 동기화됩니다. 차원문을 강제로 닫는 데 성공했습니다.", warn: false, contam: -20 },
+                        { text: "[변수 발생] 빌런의 기습으로 가이드 부상 (오염도 ⬆⬆)", result: ">> 틈을 노린 빌런의 칼날이 가이드의 어깨를 관통합니다. 센티넬의 눈동자가 분노로 붉게 물듭니다.", warn: true, contam: 40 }
+                    ]
+                }
+            ]
+        },
+        {
+            location: "경기도 폐공장 지대 (빌런 아지트)",
+            desc: "센티넬을 납치해 불법 생체 실험을 하던 빌런 조직의 거점을 습격했습니다. 내부는 함정으로 가득합니다.",
+            phase1: "[전술 지시] 어둠 속에서 센티넬의 예민한 청각과 후각을 자극하는 독가스가 살포되었습니다.",
+            choices: [
+                {
+                    text: "[센티넬] 호흡을 멈추고 적진 한가운데로 돌파 (오염도 ⬆⬆)",
+                    phase2: "이성을 잃기 전 적의 목을 부러뜨리려 뛰어듭니다. 살육전이 벌어집니다.",
+                    subChoices: [
+                        { text: "[가이드] 등 뒤에서 끌어안아 진정 파장 주입 (오염도 ⬇⬇)", result: ">> 귓가에 속삭이는 가이드의 목소리에 센티넬의 핏발 선 눈이 가라앉습니다. 주변은 이미 시체뿐입니다.", warn: false, contam: -40 },
+                        { text: "[센티넬] 빌런들을 모두 맨손으로 찢어 죽임 (오염도 ⬆⬆)", result: ">> 피를 뒤집어쓴 센티넬이 통제 불능 상태에 빠집니다. 극악의 오염도가 관측됩니다.", warn: true, contam: 35 }
+                    ]
+                },
+                {
+                    text: "[가이드] 자신의 겉옷으로 센티넬의 코를 막아줌 (오염도 ⬇)",
+                    phase2: "가이드 체취가 묻은 옷이 센티넬의 감각 과부하를 억제합니다. 시야를 확보하며 조심스럽게 전진합니다.",
+                    subChoices: [
+                        { text: "실험체 구출 및 증거 확보 후 조용히 퇴각", result: ">> 불필요한 전투를 피해 작전을 완수했습니다. 페어의 호흡이 빛났습니다.", warn: false, contam: -10 },
+                        { text: "은신 중 들켜 총격전 발생 (오염도 ⬆)", result: ">> 빗발치는 총알을 센티넬이 몸으로 막아냅니다. 상처 사이로 탁한 기운이 스며듭니다.", warn: true, contam: 20 }
+                    ]
+                }
+            ]
+        },
+        {
+            location: "피어리스 한국 본부 내 개인실",
+            desc: "임무 종료 후. 억제제 부작용과 감각 과부하로 인해 센티넬이 심한 환각과 고열에 시달리고 있습니다.",
+            phase1: "[긴급 상황] 침대에 결박된 센티넬이 가쁜 숨을 몰아쉬며 가이드의 이름을 애타게 부릅니다.",
+            choices: [
+                {
+                    text: "[가이드] 결박을 풀고 맨몸으로 끌어안음 (오염도 ⬇⬇)",
+                    phase2: "뜨거운 체온이 닿자 센티넬이 맹수처럼 가이드를 옭아맵니다. 짙은 농도의 가이딩이 시작됩니다.",
+                    subChoices: [
+                        { text: "밤새도록 이어지는 깊고 농밀한 스킨십 (오염도 ⬇⬇⬇)", result: ">> 한계까지 치달았던 오염도가 가이드의 체취와 온기에 녹아내립니다. 완벽한 안정을 되찾았습니다.", warn: false, contam: -60 },
+                        { text: "센티넬의 폭력적인 손길에 가이드가 상처를 입음 (오염도 ⬇)", result: ">> 진정되긴 했으나, 가이드의 목에 붉은 멍이 남았습니다. 센티넬은 아침에 깨어나 뼈저리게 후회할 것입니다.", warn: true, contam: -15 }
+                    ]
+                },
+                {
+                    text: "[가이드] 거리를 두고 파장만 방사함 (오염도 ⬆)",
+                    phase2: "신체 접촉을 피한 채 파장만 보냅니다. 하지만 약물 부작용으로 인해 원거리 가이딩은 효과가 미미합니다.",
+                    subChoices: [
+                        { text: "[센티넬] 결박을 끊어내고 가이드를 덮침 (오염도 ⬆)", result: ">> 이성을 상실한 센티넬이 강제로 가이드를 취하려 합니다. 경보가 울리고 무장 요원들이 문 밖으로 집결합니다.", warn: true, contam: 30 },
+                        { text: "고통을 참지 못하고 쇼크로 기절함 (오염도 ⬆)", result: ">> 센티넬의 의식이 끊어졌습니다. 즉각적인 집중 치료가 필요합니다.", warn: true, contam: 20 }
+                    ]
+                }
+            ]
+        },
+        {
+            location: "인천항 제4부두 (비오는 밤)",
+            desc: "밀수입되는 S급 빌런 무기 거래 현장을 포착했습니다. 빗소리가 센티넬의 청각을 고문하듯 날카롭게 찌릅니다.",
+            phase1: "[전술 지시] 빗방울 하나하나가 바늘처럼 느껴지는 감각 폭주 상태. 접근 방식을 선택하십시오.",
+            choices: [
+                {
+                    text: "[가이드] 빗소리를 차단하는 백색 소음 파장 전개 (오염도 ⬇)",
+                    phase2: "가이드가 센티넬의 귀를 감싸며 파장으로 외부 소음을 차단합니다. 센티넬의 숨결이 안정됩니다.",
+                    subChoices: [
+                        { text: "안정된 감각으로 적 수뇌부를 정밀 저격 (오염도 ⬇)", result: ">> 소음기 달린 총성이 울리고 타겟이 쓰러집니다. 임무 성공.", warn: false, contam: -10 },
+                        { text: "적에게 발각되어 수십 명에게 포위됨 (오염도 ⬆)", result: ">> 가이드가 방어막에 집중하는 동안 적들이 몰려왔습니다. 강행 돌파가 불가피합니다.", warn: true, contam: 20 }
+                    ]
+                },
+                {
+                    text: "[센티넬] 고통을 분노로 치환하여 단독 돌격 (오염도 ⬆⬆)",
+                    phase2: "비명을 지르며 빗속으로 뛰어듭니다. 핏빛 웅덩이가 부두에 고이기 시작합니다.",
+                    subChoices: [
+                        { text: "[가이드] 위험을 감수하고 빗속으로 뛰어들어 손을 잡음 (오염도 ⬇⬇)", result: ">> 피투성이가 된 센티넬의 손을 굳게 잡습니다. 살기가 누그러지고 안식이 찾아옵니다.", warn: false, contam: -35 },
+                        { text: "[센티넬] 무기를 탈취한 빌런의 일격 허용 (오염도 ⬆⬆)", result: ">> 이성을 잃고 날뛰다 치명상을 입습니다. 빗물과 피가 섞여 흐릅니다.", warn: true, contam: 30 }
+                    ]
+                }
+            ]
+        },
+        {
+            location: "버려진 놀이공원 (거울 미로)",
+            desc: "파장을 교란하는 정신계 빌런의 구역. 센티넬이 최악의 과거 트라우마 환각을 보고 있습니다.",
+            phase1: "[긴급 상황] 센티넬이 환각 속의 적을 향해 능력을 난사하며 가이드마저 적으로 인식하려 합니다.",
+            choices: [
+                {
+                    text: "[가이드] 강한 정신 지배 파장으로 환각을 부숨 (오염도 ⬇)",
+                    phase2: "가이드가 자신의 정신력을 깎아내어 센티넬의 시야를 강제로 맑게 만듭니다. 가이드의 코에서 피가 흐릅니다.",
+                    subChoices: [
+                        { text: "[센티넬] 제정신을 차리고 즉시 빌런을 참수 (오염도 ⬇)", result: ">> 피 흘리는 가이드를 본 센티넬이 분노하여 단숨에 원흉의 목을 벱니다. 이후 절박한 가이딩이 이어집니다.", warn: false, contam: -20 },
+                        { text: "[페어] 환각 속에서 빠져나오지 못하고 쓰러짐 (오염도 ⬆⬆)", result: ">> 둘 다 정신계 공격에 무너졌습니다. 본부에서 긴급 구조팀을 파견합니다.", warn: true, contam: 40 }
+                    ]
+                },
+                {
+                    text: "[가이드] 무방비 상태로 센티넬의 품에 안김 (오염도 ⬇⬇)",
+                    phase2: "죽을 수도 있다는 공포를 억누르고, 환각에 빠진 센티넬의 품으로 파고들어 목덜미를 껴안습니다.",
+                    subChoices: [
+                        { text: "가이드 특유의 체취로 센티넬의 각성을 유도 (오염도 ⬇⬇)", result: ">> 가장 익숙하고 절대적인 안식처의 냄새. 센티넬이 환각을 깨고 오열하며 가이드를 안습니다.", warn: false, contam: -50 },
+                        { text: "센티넬이 가이드의 목을 조름 (오염도 ⬆⬆)", result: ">> 끔찍한 오해. 가이드의 숨이 넘어가기 직전, 빌런의 파장이 더 거세집니다. 절망적인 상황.", warn: true, contam: 45 }
+                    ]
+                }
+            ]
+        }
+    ];
+
+    function renderChoices(options, callback) {
+        if(isBerserk) return;
+        const area = document.getElementById('choice-area');
+        area.innerHTML = "";
+        const row = document.createElement("div");
+        row.className = "choice-row";
+
+        options.forEach(opt => {
+            const btn = document.createElement("button");
+            btn.className = "choice-btn"; 
+            
+            // 🔥 오염도 85% 이상일 때 선택지 부서지는 연출
+            if (contamLevel >= 85) {
+                btn.classList.add("broken");
+                btn.innerText = "■■" + opt.text.substring(2, opt.text.length - 2) + "■■"; // 텍스트 깨짐
+            } else {
+                btn.innerText = opt.text;
+            }
+            
+            btn.onclick = () => { if(!isTyping) callback(opt); };
+            row.appendChild(btn);
+        });
+        area.appendChild(row);
+    }
 
     async function startMission() {
+        if(isTyping || isBerserk) return;
         const screen = document.getElementById('screen');
         const choiceArea = document.getElementById('choice-area');
         screen.innerHTML = ""; choiceArea.innerHTML = "";
         
-        // 오류 연출 강화
-        await type("SYSTEM_REBOOTING...", "glitch");
-        await type("CAUTION: UNSTABLE DIMENSIONAL VORTEX DETECTED.", "warning");
-        await type("> ACCESSING FEARLESS KOREA DATABASE...");
-        
-        const locs = ["노원·도봉 폐상가 구역", "강남 코엑스 지하 균열", "여의도 벙커 유적", "잠실 S급 개체 출현지"];
-        currentLoc = locs[Math.floor(Math.random()*locs.length)];
+        currentMissionContext = missionDB[Math.floor(Math.random() * missionDB.length)];
+        isTyping = true;
 
-        await type(`> MISSION_LOC: ${currentLoc}`);
-        await type("> [INFO] 차원문 안정화 및 유출 개체 처리 시작.");
-        
-        // 무작위 시스템 오류 텍스트
-        if(Math.random() > 0.3) await type("ERROR: SYNCHR█NIZATION ERR█R", "glitch");
-        if(Math.random() > 0.5) await type("[CRITICAL] 센티넬 감각 과부하 위험 수치 도달", "warning");
+        await type("SYSTEM_OVERRIDE_INITIATED...", "glitch");
+        await type(">> 피어리스 데이터베이스 암호 해독 완료.", "normal");
+        await type(`>> 작전 구역: ${currentMissionContext.location}`);
+        await type(`>> 상황 보고: ${currentMissionContext.desc}`);
+        await type("-----------------------------------");
+        await type(currentMissionContext.phase1, "warning");
 
-        updateStatus();
-        showChoices();
+        await updateContamination(10); 
+        updateStatus(true);
+        renderChoices(currentMissionContext.choices, handlePhase1);
+        isTyping = false;
     }
 
-    function updateStatus() {
-        const heart = Math.floor(Math.random()*40 + 90);
-        const sanity = Math.floor(Math.random()*100);
-        document.getElementById('status-display').innerHTML = 
-            `심박수: ${heart} BPM<br>감각 부하: ${sanity > 70 ? 'CRITICAL' : 'STABLE'}<br>동기화율: ${sanity}%`;
-        document.getElementById('comm').innerText = `[HQ] ${Math.random()>0.5?'지원 병력 대기 중':'상황 보고 요망'}`;
-    }
-
-    function showChoices() {
-        const area = document.getElementById('choice-area');
-        const row = document.createElement("div");
-        row.className = "choice-row";
-
-        const btn1 = document.createElement("button");
-        btn1.className = "choice-btn"; btn1.innerText = "안정화 시도";
-        btn1.onclick = () => handleResult('stabilize');
-
-        const btn2 = document.createElement("button");
-        btn2.className = "choice-btn"; btn2.innerText = "강행 돌파";
-        btn2.onclick = () => handleResult('force');
-
-        row.appendChild(btn1); row.appendChild(btn2);
-        area.appendChild(row);
-    }
-
-    async function handleResult(typeCode) {
+    async function handlePhase1(choiceObj) {
+        if(isTyping || isBerserk) return;
         document.getElementById('choice-area').innerHTML = "";
-        const screen = document.getElementById('screen');
+        isTyping = true;
+        await type(" ");
+        await type(`[전술 선택] ${choiceObj.text}`, "normal");
+        await type(choiceObj.phase2, "warning");
+        isTyping = false;
         
-        const results = {
-            stabilize: [
-                { txt: ">> 성공: 차원문이 안전하게 폐쇄되었습니다. 페어 전원 무사 귀환.", warn: false },
-                { txt: ">> 실패: 안정화 장치 역류. 가이드의 정신적 피로도가 급증합니다.", warn: true },
-                { txt: ">> 부분 성공: 균열은 닫혔으나 잔류 에너지가 지역에 고착되었습니다.", warn: false }
-            ],
-            force: [
-                { txt: ">> 성공: 압도적인 화력으로 개체를 섬멸했습니다. 센티넬 폭주 지수 상승.", warn: true },
-                { txt: ">> 실패: 개체 포위망 돌파 불가. 긴급 후퇴 프로토콜 발동.", warn: true },
-                { txt: ">> 미션 완수: 목표 도달 성공. 단, 센티넬이 일시적 실명 상태에 빠집니다.", warn: true }
-            ]
-        };
+        renderChoices(choiceObj.subChoices, handlePhase2);
+    }
 
-        const pick = results[typeCode][Math.floor(Math.random() * results[typeCode].length)];
-        await type("...ANALYZING OUTCOME...", "glitch");
-        await type(pick.txt, pick.warn ? 'warning' : 'normal');
+    async function handlePhase2(subChoiceObj) {
+        if(isTyping || isBerserk) return;
+        document.getElementById('choice-area').innerHTML = "";
+        isTyping = true;
+        await type(" ");
+        await type(`[최종 대응] ${subChoiceObj.text}`, "normal");
+        await type("...ANALYZING_TACTICAL_OUTCOME...", "glitch");
+        await type("-----------------------------------");
+        
+        // 치유 연출 (오염도 감소하는 선택지일 경우)
+        if (subChoiceObj.contam < 0) {
+            triggerHealEffect();
+            await type(subChoiceObj.result, "heal");
+        } else {
+            await type(subChoiceObj.result, subChoiceObj.warn ? 'warning' : 'normal');
+        }
 
-        // 추가 임무 버튼 생성
+        await updateContamination(subChoiceObj.contam);
+        updateStatus(false, subChoiceObj.warn);
+        isTyping = false;
+
         const nextBtn = document.createElement("button");
         nextBtn.className = "hud-btn";
-        nextBtn.style.marginTop = "15px";
-        nextBtn.innerText = "NEXT MISSION START";
+        nextBtn.style.marginTop = "20px";
+        nextBtn.innerText = "NEXT PROTOCOL START";
         nextBtn.onclick = startMission;
         document.getElementById('choice-area').appendChild(nextBtn);
     }
 
-    function generateOOC() {
-        const sName = document.getElementById('name1').value || "센티넬";
-        const gName = document.getElementById('name2').value || "가이드";
-        const ooc = `*[OOC: 세션 정보 업데이트\n\n지점: ${currentLoc}\n투입 인원: ${sName}(S), ${gName}(G)\n상황: 차원 파동 간섭으로 인한 가이딩 불확실성 증대. 폐상가 골목에서의 기습 위험 존재.\n\n위 데이터를 기반으로 RP를 진행합니다.]*`;
-        document.getElementById('oocBox').value = ooc;
+    function updateStatus(isStart, isWarn = false) {
+        if(isBerserk) return;
+        const heart = Math.floor(Math.random() * 50 + 80); 
+        const sync = isStart ? Math.floor(Math.random() * 20 + 80) : (isWarn ? Math.floor(Math.random() * 30 + 40) : 100);
+        
+        let statusText = "안정 (STABLE)";
+        if(isWarn) statusText = "<span style='color:var(--danger-red); font-weight:bold;'>위험 (CRITICAL)</span>";
+
+        document.getElementById('status-display').innerHTML = 
+            `심박수: ${heart} BPM<br>감각 부하: ${statusText}<br>현재 동기화율: ${sync}%`;
+        document.getElementById('comm').innerText = `[HQ] ${isWarn ? '의료반 긴급 대기 중' : '현장 지휘권 이양 완료'}`;
     }
 
-    function copyOOC() { oocBox.select(); document.execCommand("copy"); alert("OOC 복사 완료"); }
+    function generateOOC() {
+        if(isBerserk) return;
+        const role1 = document.getElementById('role1').value;
+        const name1 = document.getElementById('name1').value || (role1 === 'SENTINEL' ? "미등록 센티넬" : "미등록 가이드");
+        const role2 = document.getElementById('role2').value;
+        const name2 = document.getElementById('name2').value || (role2 === 'GUIDE' ? "미등록 가이드" : "미등록 센티넬");
+        
+        let loc = currentMissionContext ? currentMissionContext.location : "피어리스 한국 지휘 본부 대기실";
+        let desc = currentMissionContext ? currentMissionContext.desc : "새로운 작전 명령 하달 및 가이딩 대기 중입니다.";
+
+        const ooc = `*[OOC: 피어리스 시스템 상황 업데이트]\n\n▶ 작전 구역: ${loc}\n▶ 투입 요원: [${role1}] ${name1} / [${role2}] ${name2}\n▶ 현재 상황: ${desc}\n▶ 현재 오염도: ${contamLevel}%\n\n[지침] 위 데이터를 기반으로 변수 창출 및 파트너 간의 상호작용(전투/가이딩) 롤플레잉(RP)을 무겁고 진지하게 전개해 주십시오.*`;
+        document.getElementById('oocBox').value = ooc;
+        
+        const sysMsg = document.createElement("div");
+        sysMsg.className = "line warning";
+        sysMsg.innerText = ">> 하단에 OOC 문서가 생성되었습니다. 복사하여 롤플레이에 활용하십시오.";
+        document.getElementById('screen').appendChild(sysMsg);
+        document.getElementById('screen').scrollTop = document.getElementById('screen').scrollHeight;
+    }
+
+    function copyOOC() { 
+        if(isBerserk) return;
+        const box = document.getElementById('oocBox');
+        box.select(); document.execCommand("copy"); 
+        
+        const sysMsg = document.createElement("div");
+        sysMsg.className = "line heal-text";
+        sysMsg.innerText = ">> [시스템 알림] 클립보드에 상황문이 복사되었습니다.";
+        document.getElementById('screen').appendChild(sysMsg);
+        document.getElementById('screen').scrollTop = document.getElementById('screen').scrollHeight;
+    }
 
     async function saveImage() {
         const lower = document.getElementById('lower-ui');
         const top = document.getElementById('top-controls');
         lower.style.display = 'none'; top.style.display = 'none';
+        
         const canvas = await html2canvas(document.getElementById('capture'), { scale: 2, backgroundColor: "#000" });
         const link = document.createElement("a");
-        link.download = "FEARLESS_LOG.png";
+        link.download = "FEARLESS_TACTICAL_LOG.png";
         link.href = canvas.toDataURL();
         link.click();
+        
         lower.style.display = 'block'; top.style.display = 'flex';
     }
 </script>
